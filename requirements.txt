@@ -1,0 +1,32 @@
+# FastAPI Skeleton - Requirements
+# Python >= 3.11 required
+
+# Core Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# Database
+sqlalchemy[asyncio]>=2.0.0
+asyncpg>=0.30.0
+alembic>=1.14.0
+
+# Configuration
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+python-dotenv>=1.0.0
+
+# CLI
+typer[all]>=0.14.0
+rich>=13.9.0
+
+# Utilities
+python-multipart>=0.0.18
+httpx>=0.28.0
+
+# Development (optional - install with: pip install -r requirements-dev.txt)
+# pytest>=8.3.0
+# pytest-asyncio>=0.24.0
+# pytest-cov>=6.0.0
+# ruff>=0.8.0
+# mypy>=1.13.0
+# pre-commit>=4.0.0
