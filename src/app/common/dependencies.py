@@ -6,10 +6,20 @@ from fastapi import Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.postgres.database import get_db
+from app.services.user_service import UserService
 
 
 # Type alias for database session dependency
 DBSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+# Service dependencies
+def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
+    """Get UserService instance with database session."""
+    return UserService(db)
+
+
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 
 
 async def get_request_id(request: Request) -> str:

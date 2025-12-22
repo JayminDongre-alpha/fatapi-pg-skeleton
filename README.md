@@ -12,6 +12,7 @@ A production-ready FastAPI project skeleton with async SQLAlchemy, structured JS
 - **Structured JSON Logging** with rotating file handlers
 - **Request/Response Middleware** with timing and request IDs
 - **Versioned API** structure (`/api/v1/`)
+- **Layered Architecture** with services and providers separation
 
 ## Project Structure
 
@@ -25,18 +26,95 @@ fastapi-skeleton/
 │   │   ├── middleware.py       # Request/Response logging
 │   │   ├── lifespan.py         # Startup/shutdown events
 │   │   └── router.py           # Root router mapper
+│   ├── services/               # Business logic layer
+│   │   ├── base.py             # BaseService class
+│   │   └── user_service.py     # UserService (CRUD operations)
+│   ├── providers/              # Third-party integrations
+│   │   ├── base.py             # BaseProvider abstract class
+│   │   └── email_provider.py   # Email/SMTP provider
 │   ├── models/
 │   │   └── postgres/
 │   │       ├── base.py         # Base model (id, timestamps)
 │   │       ├── database.py     # Async DB session manager
 │   │       └── user.py         # Sample User model
-│   ├── api/v1/endpoints/       # API endpoints
+│   ├── api/v1/endpoints/       # API endpoints (thin handlers)
 │   ├── schemas/                # Pydantic schemas
 │   └── common/                 # Helpers, exceptions, dependencies
 ├── cli/                        # CLI commands
 ├── tests/                      # Test suite
 ├── alembic/                    # Database migrations
 └── logs/                       # Log files
+```
+
+## Architecture
+
+This project follows a **layered architecture** pattern:
+
+```
+HTTP Request → Endpoint → Service → Model → Database
+                             ↓
+                         Provider (for 3rd party APIs)
+```
+
+| Layer | Purpose | Example |
+|-------|---------|---------|
+| **Endpoints** | Thin HTTP handlers, routing, response formatting | `api/v1/endpoints/users.py` |
+| **Services** | Business logic, validation, orchestration | `services/user_service.py` |
+| **Models** | Database ORM, data persistence | `models/postgres/user.py` |
+| **Providers** | Third-party integrations (email, payment, etc.) | `providers/email_provider.py` |
+
+### Services
+
+Services contain all business logic. Endpoints should not access models directly.
+
+```python
+# In endpoint (thin handler)
+@router.get("/{user_id}")
+async def get_user(user_id: int, service: UserServiceDep) -> UserResponse:
+    user = await service.get_by_id(user_id)
+    return UserResponse.model_validate(user)
+```
+
+```python
+# In service (business logic)
+class UserService(BaseService):
+    async def get_by_id(self, user_id: int) -> User:
+        query = select(User).where(User.id == user_id)
+        result = await self.db.execute(query)
+        user = result.scalar_one_or_none()
+        if not user:
+            raise NotFoundException("User")
+        return user
+```
+
+### Providers
+
+Providers handle third-party integrations. Services can use providers for external operations.
+
+```python
+# Example: Service using a provider
+class UserService(BaseService):
+    def __init__(self, db: AsyncSession, email: EmailProvider):
+        super().__init__(db)
+        self.email = email
+
+    async def create(self, data: UserCreate) -> User:
+        user = await self._create_user(data)
+        await self.email.send_email(
+            to=user.email,
+            subject="Welcome!",
+            body="Thanks for signing up."
+        )
+        return user
+```
+
+To enable email, add SMTP settings to `.env`:
+```env
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your-username
+SMTP_PASSWORD=your-password
+SMTP_FROM_EMAIL=noreply@example.com
 ```
 
 ## Installation
